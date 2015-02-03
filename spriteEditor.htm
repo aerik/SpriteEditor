@@ -173,6 +173,9 @@
 			resizeCanvas(sprite,editor.spriteWidth * editor.spriteScale, editor.spriteHeight * editor.spriteScale);
 			var sheet = document.getElementById("sheet");
 			resizeCanvas(sheet,editor.spriteWidth * editor.sheetCols,editor.spriteHeight * editor.sheetRows);
+			var preview = document.getElementById("preview");
+			preview.height = editor.spriteHeight;
+			preview.width = editor.spriteWidth;
 			updateOverlay();
 		}
 		
@@ -282,6 +285,28 @@
 			}
 			return "facing " + facing + " step " + step;
 		}
+		
+		//walk the character
+	function animate(){
+		if(typeof(animate.ptr)=="undefined"){
+			animate.ptr = 0;
+			animate.inc = 1;
+		}else if(animate.ptr >= editor.sheetCols){
+			animate.inc = -1;
+			animate.ptr = editor.sheetCols - 2;
+		}else if(animate.ptr < 0){
+			animate.ptr = 1;
+			animate.inc = 1;
+		}
+		var locAry = document.getElementById("selectedSprite").value.split(",");
+		var sy = editor.spriteHeight * (locAry[0] - 1);//indexed at one
+		var sx = editor.spriteWidth * animate.ptr;
+		var pCtx = document.getElementById("preview").getContext("2d");
+		pCtx.clearRect(0, 0, editor.spriteWidth, editor.spriteHeight);
+		pCtx.drawImage(sheet,sx,sy,editor.spriteWidth,editor.spriteHeight,0,0,editor.spriteWidth,editor.spriteHeight);
+		animate.ptr += animate.inc;
+		setTimeout(animate,200);
+	}
 	</script>
 </head>
 <body>
@@ -298,15 +323,16 @@
 		</select>
 	</div>
 	<div id="spriteWrapper" style="display:inline-block;">
-		<canvas id="sprite" height="300" width="300" onclick="drawToSprite();"></canvas>
+		<canvas id="sprite" height="100" width="100" onclick="drawToSprite();"></canvas>
 		<br>
 		<input type="file" name="inputSprite" id="inputSprite" onchange="loadSprite('inputSprite');"></input>
 		<br />
 		<input type="button" id="copyToSheetBtn" value="copy to sheet" onclick="copySpriteToSheet()"></input>
 	</div>
 	<div id="sheetWrapper" style="display:inline-block;">
+		<canvas id="preview" height="100" width="100"></canvas>
 		<div id="desc" style="height:1em;"></div>
-		<canvas id="sheet" height="300" width="300"></canvas>
+		<canvas id="sheet" height="100" width="100"></canvas>
 		<br>
 		<input type="file" name="inputSheet" id="inputSheet" onchange="loadSheet('inputSheet');"></input>
 		<br />
