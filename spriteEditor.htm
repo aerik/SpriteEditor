@@ -1,0 +1,354 @@
+<html>
+<head>
+	<style>
+		*::selection 
+		{
+				background-color:transparent;
+		} 
+		*::-moz-selection
+		{
+				background-color:transparent;
+		}
+		*
+		{        
+				-webkit-user-select: none;
+				-moz-user-select: -moz-none;
+				/*IE10*/
+				-ms-user-select: none;
+				user-select: none;
+
+				/*You just need this if you are only concerned with android and not desktop browsers.*/
+				-webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+		} 
+		
+		body{
+			background-color: grey;
+		}
+		body > * {
+			vertical-align:middle;  // Align children to middle of line
+		}
+		canvas{
+			background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyJpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMC1jMDYwIDYxLjEzNDc3NywgMjAxMC8wMi8xMi0xNzozMjowMCAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENTNSBNYWNpbnRvc2giIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6NUE4Mzc1QzdCRTc5MTFFMEEzN0JGMzVBMjczRjNDOTgiIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6NUE4Mzc1QzhCRTc5MTFFMEEzN0JGMzVBMjczRjNDOTgiPiA8eG1wTU06RGVyaXZlZEZyb20gc3RSZWY6aW5zdGFuY2VJRD0ieG1wLmlpZDo1QTgzNzVDNUJFNzkxMUUwQTM3QkYzNUEyNzNGM0M5OCIgc3RSZWY6ZG9jdW1lbnRJRD0ieG1wLmRpZDo1QTgzNzVDNkJFNzkxMUUwQTM3QkYzNUEyNzNGM0M5OCIvPiA8L3JkZjpEZXNjcmlwdGlvbj4gPC9yZGY6UkRGPiA8L3g6eG1wbWV0YT4gPD94cGFja2V0IGVuZD0iciI/Pm86kuEAAAAGUExURf///8zMzDjqqoMAAAAXSURBVHjaYmCEAgYYGCCBAbYeJgAQYABFEACBH3S9GAAAAABJRU5ErkJggg==);
+		    image-rendering: optimizeSpeed;
+		    image-rendering: -moz-crisp-edges;
+		    image-rendering: -webkit-optimize-contrast;
+		    image-rendering: optimize-contrast;
+		}
+		
+		div{
+
+		}
+	</style>
+	<script type="text/javascript">
+		var editor = {
+			spriteData: null,
+			spriteScale:10,
+			spriteHeight:0,
+			spriteWidth:0,
+			sheetData: null,
+			sheetRows:1,
+			sheetCols:1,
+			drawMode:'draw'
+		}
+		
+		function getPos(element){
+			var rect = element.getBoundingClientRect();
+			var elementLeft,elementTop; //x and y
+			var scrollTop = document.documentElement.scrollTop?
+											document.documentElement.scrollTop:document.body.scrollTop;
+			var scrollLeft = document.documentElement.scrollLeft?                   
+											 document.documentElement.scrollLeft:document.body.scrollLeft;
+			return { top: rect.top+scrollTop, left: elementLeft = rect.left+scrollLeft};
+		}
+		function loadSprite(srcFile){
+			var spriteCanvas = document.getElementById("sprite");
+			//clear the canvas
+			spriteCanvas.width = editor.spriteWidth * editor.spriteScale;
+			spriteCanvas.height = editor.spriteHeight * editor.spriteScale;
+			var tempCanvas = document.createElement("canvas");
+			tempCanvas.width = editor.spriteWidth;
+			tempCanvas.height = editor.spriteHeight;
+			var callback = function(){
+				scaleUpCanvas(tempCanvas,spriteCanvas);
+			}
+			loadImg(srcFile,tempCanvas, callback);
+		}
+		
+		function scaleUpCanvas(srcCanvas, outCanvas){
+			var tempCtx = srcCanvas.getContext("2d");
+			var imageData = tempCtx.getImageData(0,0,srcCanvas.width, srcCanvas.height).data;
+			var databuf = new Uint32Array(imageData.buffer);
+			var outCtx = outCanvas.getContext("2d");
+			for(var y=0; y< srcCanvas.height; y++){
+				var yOff = y * srcCanvas.width;
+				for(var x=0; x<srcCanvas.width; x++){
+					var totOff = (yOff +x) * 4;
+					var intColor = databuf[yOff + x];
+					var r = imageData[totOff];
+					var g = imageData[totOff + 1];
+					var b = imageData[totOff + 2];
+					var a = imageData[totOff + 3];
+					if(intColor > 0){
+						//console.log(intColor,r,g,b,a);
+						outCtx.fillStyle = "rgba("+r+","+g+","+b+","+a+")";
+						outCtx.fillRect(x * editor.spriteScale, y * editor.spriteScale, editor.spriteScale, editor.spriteScale);
+					}else{
+						outCtx.clearRect(x * editor.spriteScale, y * editor.spriteScale, editor.spriteScale, editor.spriteScale);
+					}
+				}
+			}
+		}
+		
+		function intToHexColor(intColor){
+			var str = intColor.toString(16);
+			var pad = "000000";
+			var hexColor = pad.substring(0, pad.length - str.length) + str;
+			return hexColor;
+		}
+		function loadSheet(srcFile){
+			var sheetCanvas = document.getElementById("sheet");
+			sheetCanvas.width = editor.spriteWidth * editor.sheetCols;
+			sheetCanvas.height = editor.spriteHeight * editor.sheetRows;
+			loadImg(srcFile,sheetCanvas);
+		}
+		
+
+		function loadImg(srcInput, canvas, callback){
+			var src = document.getElementById(srcInput);
+			var file = src.files[0];
+			var fr = new FileReader();
+			fr.onload = function(){
+				var img = new Image();
+	            img.onload = function(){
+		            var ctx = canvas.getContext("2d");
+			        ctx.imageSmoothingEnabled = false;
+			        ctx.webkitImageSmoothingEnabled = false;
+			        ctx.mozImageSmoothingEnabled = false;
+		            ctx.drawImage(img,0,0,canvas.width,canvas.height);
+		            if(callback) callback();
+	            }
+	            img.src = fr.result;
+			}
+			fr.readAsDataURL(file);    // begin reading
+		}
+		function copyCanvas(fromCanvas, toCanvas){
+			var toCtx = toCanvas.getContext("2d");
+			toCtx.imageSmoothingEnabled = false;
+	        toCtx.webkitImageSmoothingEnabled = false;
+	        toCtx.mozImageSmoothingEnabled = false;
+	        toCtx.drawImage(fromCanvas,0,0,toCanvas.width, toCanvas.height);
+		}
+		//don't use this for sprites
+		//what's the best way to handle changed settings?
+		function resizeCanvas(acanvas,newwidth,newheight){
+			var cTemp = document.createElement("canvas");
+			cTemp.width = newwidth;
+			cTemp.height = newheight;
+			copyCanvas(acanvas,cTemp);
+			acanvas.width = newwidth;
+			acanvas.height = newheight;
+			copyCanvas(cTemp,acanvas);
+		}
+		function updateEditor(){
+			var spriteSizeAry = document.getElementById("spriteSize").value.split("x");
+			editor.spriteHeight = spriteSizeAry[0];
+			editor.spriteWidth = spriteSizeAry[1];
+			var sheetDimsAry = document.getElementById("sheetSize").value.split("x");
+			editor.sheetRows = sheetDimsAry[0];
+			editor.sheetCols = sheetDimsAry[1];
+			var ss = document.querySelector("#selectedSprite");
+			for(var i=ss.options.length-1; i>=0; i--)
+			{
+				ss.remove(i);
+			}
+			for(var r=0; r< editor.sheetRows; r++){
+				for(var c=0; c< editor.sheetCols; c++){
+					var opt = document.createElement('option');
+					opt.value = (r+1)+","+(c+1);
+					opt.innerHTML = opt.value;
+					ss.appendChild(opt);
+				}
+			}
+			var sprite = document.getElementById("sprite");
+			resizeCanvas(sprite,editor.spriteWidth * editor.spriteScale, editor.spriteHeight * editor.spriteScale);
+			var sheet = document.getElementById("sheet");
+			resizeCanvas(sheet,editor.spriteWidth * editor.sheetCols,editor.spriteHeight * editor.sheetRows);
+			updateOverlay();
+		}
+		
+		function copySpriteToSheet(){
+			var sprite = document.getElementById("sprite");
+			var sheet = document.getElementById("sheet");
+			var ctx = sheet.getContext("2d");
+			var locAry = document.getElementById("selectedSprite").value.split(",");
+			var yoff = editor.spriteHeight * (locAry[0] - 1);//indexed at one
+			var xoff = editor.spriteWidth * (locAry[1] -1);
+			ctx.clearRect(xoff, yoff, editor.spriteWidth, editor.spriteHeight);
+			ctx.drawImage(sprite, xoff, yoff, editor.spriteWidth, editor.spriteHeight);
+		}
+		window.onload = function(){
+			updateEditor();
+			ColorPicker(
+				document.getElementById('slide'),
+				document.getElementById('picker'),
+				function(hex, hsv, rgb) {
+					document.getElementById("colorsample").style.backgroundColor = hex;
+					document.getElementById("colorhex").value = hex;
+				});
+		}
+		function updateOverlay(){
+			var overlay = document.getElementById("sheetOverlay");
+			var locAry = document.getElementById("selectedSprite").value.split(",");
+			var yoff = editor.spriteHeight * (locAry[0] - 1);//indexed at one
+			var xoff = editor.spriteWidth * (locAry[1] -1);
+			var sheetCanvas = document.getElementById("sheet");
+			var rect = getPos(sheetCanvas);
+			overlay.style.top = rect.top + yoff;
+			overlay.style.left = rect.left + xoff;
+			overlay.style.height = editor.spriteHeight;
+			overlay.style.width = editor.spriteWidth;
+			document.getElementById("desc").innerHTML = getSpriteDescription(locAry[0],locAry[1]);
+		}
+		function drawToSprite(event){
+			event = event || window.event
+			var x = Math.floor(event.offsetX / editor.spriteScale);
+			var y = Math.floor(event.offsetY / editor.spriteScale);
+			var spriteCanvas = document.getElementById("sprite");
+			var outCtx = spriteCanvas.getContext("2d");
+			if(editor.drawMode == "getcolor"){
+				var p = outCtx.getImageData(event.offsetX, event.offsetY, 1, 1).data;
+				console.log(p);
+				var hex = "#" + intToHexColor((p[0] << 16) | (p[1] << 8) | p[2]);
+				var opa = p[3]/255;
+				document.getElementById("colorsample").style.backgroundColor = hex;
+				document.getElementById("colorhex").value = hex;
+				console.log(hex,opa);
+			}else if(editor.drawMode == 'erase'){
+				outCtx.clearRect(x * editor.spriteScale, y * editor.spriteScale, editor.spriteScale, editor.spriteScale);
+			}else{
+				outCtx.globalAlpha = parseInt(document.getElementById("opacity").value)/100;
+				outCtx.fillStyle = document.getElementById("colorhex").value;
+				outCtx.fillRect(x * editor.spriteScale, y * editor.spriteScale, editor.spriteScale, editor.spriteScale);
+			}
+		}
+		
+		function copySpriteFromSheet(){
+			var cTemp = document.createElement("canvas");
+			cTemp.height = editor.spriteHeight;
+			cTemp.width = editor.spriteWidth;
+			var sheet = document.getElementById("sheet");
+			var tempCtx = cTemp.getContext("2d");
+			var locAry = document.getElementById("selectedSprite").value.split(",");
+			var sy = editor.spriteHeight * (locAry[0] - 1);//indexed at one
+			var sx = editor.spriteWidth * (locAry[1] -1);
+			tempCtx.drawImage(sheet,sx,sy,editor.spriteWidth,editor.spriteHeight,0,0,editor.spriteWidth,editor.spriteHeight);
+			scaleUpCanvas(cTemp, document.getElementById("sprite"));
+		}
+		
+		function setMode(mode){
+			editor.drawMode = mode;
+		}
+		
+		function getSpriteDescription(row,col){
+			row = parseInt(row);
+			col = parseInt(col);
+			console.log(row,col);
+			var facing = "";
+			var step = "";
+			switch(row){
+				case 1:
+					facing = "back";
+					break;
+				case 2:
+					facing = "right";
+					break;
+				case 3:
+					facing = "front";
+					break;
+				case 4:
+					facing = "left";
+					break;
+			}
+			switch(col){
+				case 1:
+					step = "left";
+					break;
+				case 2:
+					step = "stand";
+					break;
+				case 3:
+					step = "right";
+					break;
+			}
+			return "facing " + facing + " step " + step;
+		}
+	</script>
+</head>
+<body>
+	<div id="menu" style="width:100%">
+		<label for="spriteSize">Sprite Size</label><select id="spriteSize" onchange="updateEditor()">
+			<option>16x16</option>
+			<option>32x32</option>
+		</select>
+		<label for="sheetSize">Sheet Size</label><select id="sheetSize" onchange="updateEditor()">
+			<option>4x3</option>
+		</select>
+		<label for="selectedSprite">Selected sprite</label><select id="selectedSprite" onchange="updateOverlay()">
+			<option>1,1</option>
+		</select>
+	</div>
+	<div id="spriteWrapper" style="display:inline-block;">
+		<canvas id="sprite" height="300" width="300" onclick="drawToSprite();"></canvas>
+		<br>
+		<input type="file" name="inputSprite" id="inputSprite" onchange="loadSprite('inputSprite');"></input>
+		<br />
+		<input type="button" id="copyToSheetBtn" value="copy to sheet" onclick="copySpriteToSheet()"></input>
+	</div>
+	<div id="sheetWrapper" style="display:inline-block;">
+		<div id="desc" style="height:1em;"></div>
+		<canvas id="sheet" height="300" width="300"></canvas>
+		<br>
+		<input type="file" name="inputSheet" id="inputSheet" onchange="loadSheet('inputSheet');"></input>
+		<br />
+		<input type="button" id="copyToSpriteBtn" value="copy to sprite" onclick="copySpriteFromSheet()"></input>
+		<div id="sheetOverlay" style="position:absolute; border: 1px solid red"></div>
+	</div>
+	<div id="colorWrapper" style="display:inline-block;background-color:black;border-radius:5px;border:10px solid black;">
+		<div id="slide" style="height:100px;width:20px;display:inline-block;margin:0;padding:0"></div>
+		<div id="picker" style="height:100px;width:100px;display:inline-block;margin:0;padding:0;"></div>
+		<br />
+		<span>
+		<div id="colorsample" style="width:20px;height:25px;display:inline-block; background-color:white; vertical-align:middle"></div>
+		<input type="text" id="colorhex" style="width:70px" value="#FFFFFF"></input>
+		<input type="text" id="opacity" style="width:30px" value="100"></input>
+		</span>
+		<div id="toolModeWrapper" style="background-color:grey;">
+			<input type="radio" name="toolmode" id="toolmodedraw" value="draw" checked="checked" onclick="setMode('draw');">
+			</input><label for="toolmodedraw">draw</label>
+			<input type="radio" name="toolmode" id="toolmodeerase" value="erase" onclick="setMode('erase');">
+			</input><label for="toolmodeerase">erase</label>
+			<br />
+			<input type="radio" name="toolmode" id="toolmodegetcolor" value="getcolor" onclick="setMode('getcolor');">
+			</input><label for="toolmodegetcolor">get color</label>
+		</div>
+	</div>
+<script type="text/javascript">
+/*
+* http://www.daviddurman.com/flexi-color-picker/
+*/
+(function(g,p,n){function v(a){if(g.event&&g.event.contentOverflow!==n)return{x:g.event.offsetX,y:g.event.offsetY};if(a.offsetX!==n&&a.offsetY!==n)return{x:a.offsetX,y:a.offsetY};var b=a.target.parentNode.parentNode;return{x:a.layerX-b.offsetLeft,y:a.layerY-b.offsetTop}}function e(a,b,c){a=p.createElementNS(z,a);for(var d in b)a.setAttribute(d,b[d]);"[object Array]"!=Object.prototype.toString.call(c)&&(c=[c]);b=0;for(d=c[0]&&c.length||0;b<d;b++)a.appendChild(c[b]);return a}function h(a){var b,c,d,
+j,e=a.h%360/60;j=a.v*a.s;d=j*(1-Math.abs(e%2-1));b=c=a=a.v-j;e=~~e;b+=[j,d,0,0,d,j][e];c+=[d,j,j,d,0,0][e];a+=[0,0,d,j,j,d][e];d=Math.floor(255*b);c=Math.floor(255*c);a=Math.floor(255*a);return{r:d,g:c,b:a,hex:"#"+(16777216|a|c<<8|d<<16).toString(16).slice(1)}}function q(a){var b=a.r,c=a.g,d=a.b;if(1<a.r||1<a.g||1<a.b)b/=255,c/=255,d/=255;var e;a=Math.max(b,c,d);e=a-Math.min(b,c,d);b=60*((0==e?0:a==b?(c-d)/e+(c<d?6:0):a==c?(d-b)/e+2:(b-c)/e+4)%6);return{h:b,s:0==e?0:e/a,v:a}}function w(a,b,c){return function(d){d=
+d||g.event;d=v(d);a.h=360*(d.y/b.offsetHeight)+s;a.s=a.v=1;var e=h({h:a.h,s:1,v:1});c.style.backgroundColor=e.hex;a.callback&&a.callback(e.hex,{h:a.h-s,s:a.s,v:a.v},{r:e.r,g:e.g,b:e.b},n,d)}}function x(a,b){return function(c){c=c||g.event;c=v(c);var d=b.offsetHeight;a.s=c.x/b.offsetWidth;a.v=(d-c.y)/d;d=h(a);a.callback&&a.callback(d.hex,{h:a.h-s,s:a.s,v:a.v},{r:d.r,g:d.g,b:d.b},c)}}function f(a,b,c){if(!(this instanceof f))return new f(a,b,c);this.h=0;this.v=this.s=1;if(c)this.callback=c,this.pickerElement=
+b,this.slideElement=a;else{a.innerHTML=A;this.slideElement=a.getElementsByClassName("slide")[0];this.pickerElement=a.getElementsByClassName("picker")[0];var d=a.getElementsByClassName("slide-indicator")[0],e=a.getElementsByClassName("picker-indicator")[0];f.fixIndicators(d,e);this.callback=function(a,c,g,h,k){f.positionIndicators(d,e,k,h);b(a,c,g)}}"SVG"==t?(a=k.getElementsByTagName("linearGradient")[0],c=k.getElementsByTagName("rect")[0],a.id="gradient-hsv-"+r,c.setAttribute("fill","url(#"+a.id+
+")"),a=l.getElementsByTagName("linearGradient"),c=l.getElementsByTagName("rect"),a[0].id="gradient-black-"+r,a[1].id="gradient-white-"+r,c[0].setAttribute("fill","url(#"+a[1].id+")"),c[1].setAttribute("fill","url(#"+a[0].id+")"),this.slideElement.appendChild(k.cloneNode(!0)),this.pickerElement.appendChild(l.cloneNode(!0)),r++):(this.slideElement.innerHTML=k,this.pickerElement.innerHTML=l);m(this.slideElement,"click",w(this,this.slideElement,this.pickerElement));m(this.pickerElement,"click",x(this,
+this.pickerElement));y(this,this.slideElement,w(this,this.slideElement,this.pickerElement));y(this,this.pickerElement,x(this,this.pickerElement))}function m(a,b,c){a.attachEvent?a.attachEvent("on"+b,c):a.addEventListener&&a.addEventListener(b,c,!1)}function y(a,b,c){var d=!1;m(b,"mousedown",function(){d=!0});m(b,"mouseup",function(){d=!1});m(b,"mouseout",function(){d=!1});m(b,"mousemove",function(a){d&&c(a)})}function u(a,b,c,d){a.h=b.h%360;a.s=b.s;a.v=b.v;b=h(a);var e={y:a.h*a.slideElement.offsetHeight/
+360,x:0},f=a.pickerElement.offsetHeight,f={x:a.s*a.pickerElement.offsetWidth,y:f-a.v*f};a.pickerElement.style.backgroundColor=h({h:a.h,s:1,v:1}).hex;a.callback&&a.callback(d||b.hex,{h:a.h,s:a.s,v:a.v},c||{r:b.r,g:b.g,b:b.b},f,e);return a}var t=g.SVGAngle||p.implementation.hasFeature("http://www.w3.org/TR/SVG11/feature#BasicStructure","1.1")?"SVG":"VML",l,k,s=15,z="http://www.w3.org/2000/svg",A='<div class="picker-wrapper"><div class="picker"></div><div class="picker-indicator"></div></div><div class="slide-wrapper"><div class="slide"></div><div class="slide-indicator"></div></div>';
+"SVG"==t?(k=e("svg",{xmlns:"http://www.w3.org/2000/svg",version:"1.1",width:"100%",height:"100%"},[e("defs",{},e("linearGradient",{id:"gradient-hsv",x1:"0%",y1:"100%",x2:"0%",y2:"0%"},[e("stop",{offset:"0%","stop-color":"#FF0000","stop-opacity":"1"}),e("stop",{offset:"13%","stop-color":"#FF00FF","stop-opacity":"1"}),e("stop",{offset:"25%","stop-color":"#8000FF","stop-opacity":"1"}),e("stop",{offset:"38%","stop-color":"#0040FF","stop-opacity":"1"}),e("stop",{offset:"50%","stop-color":"#00FFFF","stop-opacity":"1"}),
+e("stop",{offset:"63%","stop-color":"#00FF40","stop-opacity":"1"}),e("stop",{offset:"75%","stop-color":"#0BED00","stop-opacity":"1"}),e("stop",{offset:"88%","stop-color":"#FFFF00","stop-opacity":"1"}),e("stop",{offset:"100%","stop-color":"#FF0000","stop-opacity":"1"})])),e("rect",{x:"0",y:"0",width:"100%",height:"100%",fill:"url(#gradient-hsv)"})]),l=e("svg",{xmlns:"http://www.w3.org/2000/svg",version:"1.1",width:"100%",height:"100%"},[e("defs",{},[e("linearGradient",{id:"gradient-black",x1:"0%",
+y1:"100%",x2:"0%",y2:"0%"},[e("stop",{offset:"0%","stop-color":"#000000","stop-opacity":"1"}),e("stop",{offset:"100%","stop-color":"#CC9A81","stop-opacity":"0"})]),e("linearGradient",{id:"gradient-white",x1:"0%",y1:"100%",x2:"100%",y2:"100%"},[e("stop",{offset:"0%","stop-color":"#FFFFFF","stop-opacity":"1"}),e("stop",{offset:"100%","stop-color":"#CC9A81","stop-opacity":"0"})])]),e("rect",{x:"0",y:"0",width:"100%",height:"100%",fill:"url(#gradient-white)"}),e("rect",{x:"0",y:"0",width:"100%",height:"100%",
+fill:"url(#gradient-black)"})])):"VML"==t&&(k='<DIV style="position: relative; width: 100%; height: 100%"><v:rect style="position: absolute; top: 0; left: 0; width: 100%; height: 100%" stroked="f" filled="t"><v:fill type="gradient" method="none" angle="0" color="red" color2="red" colors="8519f fuchsia;.25 #8000ff;24903f #0040ff;.5 aqua;41287f #00ff40;.75 #0bed00;57671f yellow"></v:fill></v:rect></DIV>',l='<DIV style="position: relative; width: 100%; height: 100%"><v:rect style="position: absolute; left: -1px; top: -1px; width: 101%; height: 101%" stroked="f" filled="t"><v:fill type="gradient" method="none" angle="270" color="#FFFFFF" opacity="100%" color2="#CC9A81" o:opacity2="0%"></v:fill></v:rect><v:rect style="position: absolute; left: 0px; top: 0px; width: 100%; height: 101%" stroked="f" filled="t"><v:fill type="gradient" method="none" angle="0" color="#000000" opacity="100%" color2="#CC9A81" o:opacity2="0%"></v:fill></v:rect></DIV>',
+p.namespaces.v||p.namespaces.add("v","urn:schemas-microsoft-com:vml","#default#VML"));var r=0;f.hsv2rgb=function(a){a=h(a);delete a.hex;return a};f.hsv2hex=function(a){return h(a).hex};f.rgb2hsv=q;f.rgb2hex=function(a){return h(q(a)).hex};f.hex2hsv=function(a){return q(f.hex2rgb(a))};f.hex2rgb=function(a){return{r:parseInt(a.substr(1,2),16),g:parseInt(a.substr(3,2),16),b:parseInt(a.substr(5,2),16)}};f.prototype.setHsv=function(a){return u(this,a)};f.prototype.setRgb=function(a){return u(this,q(a),
+a)};f.prototype.setHex=function(a){return u(this,f.hex2hsv(a),n,a)};f.positionIndicators=function(a,b,c,d){c&&(b.style.left="auto",b.style.right="0px",b.style.top="0px",a.style.top=c.y-a.offsetHeight/2+"px");d&&(b.style.top=d.y-b.offsetHeight/2+"px",b.style.left=d.x-b.offsetWidth/2+"px")};f.fixIndicators=function(a,b){b.style.pointerEvents="none";a.style.pointerEvents="none"};g.ColorPicker=f})(window,window.document);
+</script>
+</body>
+</html>
