@@ -301,11 +301,13 @@
 		var locAry = document.getElementById("selectedSprite").value.split(",");
 		var sy = editor.spriteHeight * (locAry[0] - 1);//indexed at one
 		var sx = editor.spriteWidth * animate.ptr;
-		var pCtx = document.getElementById("preview").getContext("2d");
-		pCtx.clearRect(0, 0, editor.spriteWidth, editor.spriteHeight);
-		pCtx.drawImage(sheet,sx,sy,editor.spriteWidth,editor.spriteHeight,0,0,editor.spriteWidth,editor.spriteHeight);
-		animate.ptr += animate.inc;
-		setTimeout(animate,200);
+		requestAnimationFrame(function(){
+			var pCtx = document.getElementById("preview").getContext("2d");
+			pCtx.clearRect(0, 0, editor.spriteWidth, editor.spriteHeight);
+			pCtx.drawImage(sheet,sx,sy,editor.spriteWidth,editor.spriteHeight,0,0,editor.spriteWidth,editor.spriteHeight);
+			animate.ptr += animate.inc;
+			setTimeout(animate,200);
+		});
 	}
 	</script>
 </head>
